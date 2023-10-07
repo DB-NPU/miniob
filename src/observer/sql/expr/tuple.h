@@ -24,6 +24,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/parser/value.h"
 #include "sql/expr/expression.h"
 #include "storage/record/record.h"
+#include "common/lang/bitmap.h"
 
 class Table;
 
@@ -148,11 +149,17 @@ public:
   void set_record(Record *record)
   {
     this->record_ = record;
+    ASSERT(!this->speces_.empty(), "RowTuple speces empty!");
+    const FieldMeta* null_field = this->speces_.front()->field().meta();
+    ASSERT(nullptr != null_field && CHARS == null_field->type(), "RowTuple get null field failed!");
+    bitmap_.init(record->data() + null_field->offset(), this->speces_.size());
   }
 
-  void set_schema(const Table *table, const std::vector<FieldMeta> *fields)
+  void set_schema(const Table *table)
   {
+    ASSERT(nullptr != table, "RowTuple set_schema with a null table");
     table_ = table;
+    const std::vector<FieldMeta> *fields = table_->table_meta().field_metas();
     this->speces_.reserve(fields->size());
     for (const FieldMeta &field : *fields) {
       speces_.push_back(new FieldExpr(table, &field));
@@ -171,10 +178,14 @@ public:
       return RC::INVALID_ARGUMENT;
     }
 
-    FieldExpr *field_expr = speces_[index];
-    const FieldMeta *field_meta = field_expr->field().meta();
-    cell.set_type(field_meta->type());
-    cell.set_data(this->record_->data() + field_meta->offset(), field_meta->len());
+    if (bitmap_.get_bit(index)) {
+      cell.set_null();
+    } else {
+      FieldExpr *field_expr = speces_[index];
+      const FieldMeta *field_meta = field_expr->field().meta();
+      cell.set_type(field_meta->type());
+      cell.set_data(this->record_->data() + field_meta->offset(), field_meta->len());
+    }
     return RC::SUCCESS;
   }
 
@@ -220,6 +231,7 @@ public:
 
 private:
   Record *record_ = nullptr;
+  common::Bitmap bitmap_;
   const Table *table_ = nullptr;
   std::vector<FieldExpr *> speces_;
 };
@@ -235,39 +247,34 @@ class ProjectTuple : public Tuple
 {
 public:
   ProjectTuple() = default;
-  virtual ~ProjectTuple()
-  {
-    for (TupleCellSpec *spec : speces_) {
-      delete spec;
-    }
-    speces_.clear();
-  }
+  virtual ~ProjectTuple() { exprs_.clear(); }
 
   void set_tuple(Tuple *tuple)
   {
     this->tuple_ = tuple;
   }
 
-  void add_cell_spec(TupleCellSpec *spec)
+  void add_expr(std::unique_ptr<Expression> expr)
   {
-    speces_.push_back(spec);
+    exprs_.emplace_back(std::move(expr));
   }
   int cell_num() const override
   {
-    return speces_.size();
+    return exprs_.size();
   }
 
   RC cell_at(int index, Value &cell) const override
   {
-    if (index < 0 || index >= static_cast<int>(speces_.size())) {
+    if (index < 0 || index >= static_cast<int>(exprs_.size())) {
       return RC::INTERNAL;
     }
     if (tuple_ == nullptr) {
       return RC::INTERNAL;
     }
 
-    const TupleCellSpec *spec = speces_[index];
-    return tuple_->find_cell(*spec, cell);
+    // 原本这里会根据 tuple cell spec 去 tuple_ 里 find cell
+    // 现在这个逻辑是在 FieldExpr 的 get_value 里面
+    return exprs_[index]->get_value(*tuple_, cell);
   }
 
   RC find_cell(const TupleCellSpec &spec, Value &cell) const override
@@ -275,6 +282,10 @@ public:
     return tuple_->find_cell(spec, cell);
   }
 
+  const std::vector<std::unique_ptr<Expression>>& expressions() const
+  {
+    return exprs_;
+  }
 #if 0
   RC cell_spec_at(int index, const TupleCellSpec *&spec) const override
   {
@@ -284,9 +295,11 @@ public:
     spec = speces_[index];
     return RC::SUCCESS;
   }
-#endif
 private:
   std::vector<TupleCellSpec *> speces_;
+#endif
+private:
+  std::vector<std::unique_ptr<Expression>> exprs_;
   Tuple *tuple_ = nullptr;
 };
 

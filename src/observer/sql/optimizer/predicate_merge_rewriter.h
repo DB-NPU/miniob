@@ -8,11 +8,24 @@ EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 See the Mulan PSL v2 for more details. */
 
-//
-// Created by Wangyunlai on 2022/12/15
-//
+#pragma once
 
-#include "sql/operator/project_logical_operator.h"
+#include <vector>
+#include "sql/optimizer/rewrite_rule.h"
 
-ProjectLogicalOperator::ProjectLogicalOperator(const std::vector<Field> &fields) : fields_(fields)
-{}
+/**
+ * @brief 将父子关系的谓词合并成一个
+ * @ingroup Rewriter
+ * @details 使得能够用其他规则
+ */
+class PredicateMergeRewriter : public RewriteRule 
+{
+public:
+  PredicateMergeRewriter() = default;
+  virtual ~PredicateMergeRewriter() = default;
+
+  RC rewrite(std::unique_ptr<LogicalOperator> &oper, bool &change_made) override;
+
+private:
+  RC merge(std::unique_ptr<Expression>& source, std::unique_ptr<Expression>& target);
+};

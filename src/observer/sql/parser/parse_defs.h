@@ -52,6 +52,10 @@ enum CompOp
   LESS_THAN,    ///< "<"
   GREAT_EQUAL,  ///< ">="
   GREAT_THAN,   ///< ">"
+  LIKE_OP,      ///< "like"
+  NOT_LIKE_OP,  ///< "not like"
+  IS_NULL,      ///< is null
+  IS_NOT_NULL,  ///< is not null
   NO_OP
 };
 
@@ -65,15 +69,21 @@ enum CompOp
  */
 struct ConditionSqlNode
 {
-  int             left_is_attr;    ///< TRUE if left-hand side is an attribute
-                                   ///< 1时，操作符左边是属性名，0时，是属性值
-  Value           left_value;      ///< left-hand side value if left_is_attr = FALSE
-  RelAttrSqlNode  left_attr;       ///< left-hand side attribute
+  Expression *left_expr;
   CompOp          comp;            ///< comparison operator
-  int             right_is_attr;   ///< TRUE if right-hand side is an attribute
-                                   ///< 1时，操作符右边是属性名，0时，是属性值
-  RelAttrSqlNode  right_attr;      ///< right-hand side attribute if right_is_attr = TRUE 右边的属性
-  Value           right_value;     ///< right-hand side value if right_is_attr = FALSE
+  Expression *right_expr;
+};
+
+/**
+ * @brief 描述一串 inner join
+ * @ingroup SQLParser
+ * @details t1 inner join t2 on condition
+ */
+struct InnerJoinSqlNode
+{
+  std::string base_relation;
+  std::vector<std::string> join_relations;
+  std::vector<std::vector<ConditionSqlNode>> conditions;
 };
 
 /**
@@ -89,8 +99,8 @@ struct ConditionSqlNode
 
 struct SelectSqlNode
 {
-  std::vector<RelAttrSqlNode>     attributes;    ///< attributes in select clause
-  std::vector<std::string>        relations;     ///< 查询的表
+  std::vector<Expression *>       project_exprs; ///< attributes in select clause
+  std::vector<InnerJoinSqlNode>   relations;///< 查询的表
   std::vector<ConditionSqlNode>   conditions;    ///< 查询条件，使用AND串联起来多个条件
 };
 
@@ -113,7 +123,7 @@ struct CalcSqlNode
 struct InsertSqlNode
 {
   std::string        relation_name;  ///< Relation to insert into
-  std::vector<Value> values;         ///< 要插入的值
+  std::vector<std::vector<Value>> values;         ///< 要插入的值
 };
 
 /**
@@ -130,11 +140,16 @@ struct DeleteSqlNode
  * @brief 描述一个update语句
  * @ingroup SQLParser
  */
+struct UpdateKV
+{
+  std::string attr_name;
+  Value       value;
+};
 struct UpdateSqlNode
 {
   std::string                   relation_name;         ///< Relation to update
-  std::string                   attribute_name;        ///< 更新的字段，仅支持一个字段
-  Value                         value;                 ///< 更新的值，仅支持一个字段
+  std::vector<std::string>      attribute_names;       ///< 更新的字段，仅支持多个字段
+  std::vector<Value>            values;                ///< 更新的值，仅支持多个字段
   std::vector<ConditionSqlNode> conditions;
 };
 
@@ -150,6 +165,7 @@ struct AttrInfoSqlNode
   AttrType    type;       ///< Type of attribute
   std::string name;       ///< Attribute name
   size_t      length;     ///< Length of attribute
+  bool        nullable;   ///< Nullable
 };
 
 /**
@@ -251,6 +267,7 @@ struct ErrorSqlNode
   std::string error_msg;
   int         line;
   int         column;
+  bool        flag;
 };
 
 /**

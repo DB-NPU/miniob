@@ -76,10 +76,15 @@ public:
    * @param record[in/out] 传入的数据包含具体的数据，插入成功会通过此字段返回RID
    */
   RC insert_record(Record &record);
+  RC insert_records(std::vector<Record> &records);
   RC delete_record(const Record &record);
   RC visit_record(const RID &rid, bool readonly, std::function<void(Record &)> visitor);
   RC get_record(const RID &rid, Record &record);
 
+  //将该record的attr_name列更新为 value
+  RC update_record(Record &record, const char* attr_name, Value *value);
+  RC update_record(Record &record, const std::vector<std::string> &attr_names, const std::vector<Value*> &values);
+  
   RC recover_insert_record(Record &record);
 
   // TODO refactor
@@ -99,10 +104,13 @@ public:
   const TableMeta &table_meta() const;
 
   RC sync();
+  RC drop(const char *dir);
 
 private:
   RC insert_entry_of_indexes(const char *record, const RID &rid);
   RC delete_entry_of_indexes(const char *record, const RID &rid, bool error_on_not_exists);
+
+
 
 private:
   RC init_record_handler(const char *base_dir);
