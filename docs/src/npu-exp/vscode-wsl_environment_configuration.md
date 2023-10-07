@@ -20,15 +20,15 @@ VSCode是一种简化且高效的代码编辑器，能够提供远程连接、�
 2. 使用vscode远程连接本地wsl linux系统 
 使用vscode远程连接服务器\本地wsl，需要安装Remote Development插件，这里需要安装扩展包下WSL才能连接成功  
    
-![image](images/env-config1.png)   
+![image](../images/env-config1.png)   
   
 重启vscode，点击左下角绿色连接，然后点击连接到WSL    
 
-![image](images/env-config2.png)
+![image](../images/env-config2.png)
 
 此时成功连接到WSL，选择打开文件夹，打开之前git clone下来的miniob文件夹，这时工作目录就位于miniob项目下了    
 
-![image](images/env-config3.png)
+![image](../images/env-config3.png)
 
 > 后续如果使用vscode git工具，前提是wsl中安装git
     
@@ -38,7 +38,7 @@ miniob是基于C/C++的项目，因此在这里我们配置vscode的C/C++开发�
 
 配置C/C++环境需要安装如下c++系列插件，同样是在vscode插件商店中下载，重启vscode即可   
  
-![image](images/env-config4.png)    
+![image](../images/env-config4.png)    
 
 > 注意c/c++插件如果只下载安装到本地是无法发挥出功能的，需要下载安装到wsl中，根据插件提示安装到wsl中即可    
     
@@ -74,8 +74,8 @@ bash build.sh # 默认是debug，你也可以指定release xxxx
 # 数据目录位于build/miniob/db目录下
 ```
 启动成功后，输入一条sql语句，可以查看服务端日志observer.log
-![image](images/env-config5.png)
-![image](images/env-config6.png)
+![image](../images/env-config5.png)
+![image](../images/env-config6.png)
 
 
 总结一下，我们基于win+wsl进行miniob项目开发。vscode提供的作用是在windows环境下，能够连接到自己的wsl系统，并且能够借用vscode强大的插件高效开发项目
