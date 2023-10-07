@@ -1,6 +1,7 @@
 # Summary
 
 - [MiniOB 简介](./miniob-introduction.md)
+- [NPU 实验教程](./npu-exp/introduction.md)
 - [如何编译](./how_to_build.md)
 - [如何运行](./how_to_run.md)
 - [开发环境搭建](./dev-env/introduction.md)

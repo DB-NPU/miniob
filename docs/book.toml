@@ -5,7 +5,7 @@ src = "src"
 title = "MiniOB"
 
 [output.html]
-git-repository-url = "https://github.com/oceanbase/miniob"
+git-repository-url = "https://github.com/DB-NPU/miniob"
 
 [output.html.fold]
 enable = true
