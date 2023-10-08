@@ -6,7 +6,7 @@
 
 `select c1 from t1;`
 
-#### 一.SQL语句执行流程
+## 一.SQL语句执行流程
 
 ​	MiniOB的SQL语句执行流程如下图所示：
 
@@ -23,7 +23,7 @@
 
 现在不明白这些过程没有关系，接下来会具体分析每一个过程。
 
-#### 二.一条sql语句的一生
+## 二.一条sql语句的一生
 
 在阅读接下来的内容之前，建议大家先阅读一下链接的内容。
 
@@ -60,7 +60,7 @@ RC SessionStage::handle_sql(SQLStageEvent *sql_event)
 
 接下来会分别讲解以上四个函数。
 
-#### 三.词法解析与语法解析阶段(Parser)阶段（parse_stage_.handle_request()）
+## 三.词法解析与语法解析阶段(Parser)阶段（parse_stage_.handle_request()）
 
 ​	词法分析与语法分析是编译原理中的相关知识，在miniob中，词法文件是lex_sql.l，语法文件是yacc_sql.y，下面是miniob官方给出的介绍词法语法分析的链接,建议先阅读后再继续学习本文档。
 
@@ -123,7 +123,7 @@ struct RelAttrSqlNode
 
 ​	到此，词法语法解析的过程就结束了。
 
-#### 四.resolve_stage_.handle_request（）函数
+## 四.resolve_stage_.handle_request（）函数
 
 ```c++
 RC ResolveStage::handle_request(SQLStageEvent *sql_event)
@@ -276,7 +276,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
 
 到目前为止，我们已经将词法语法解析生成的`sqlNode`，转换为了`SelectStmt`。
 
-#### 五.optimize_stage_.handle_request()函数
+## 五.optimize_stage_.handle_request()函数
 
 ```c++
 RC OptimizeStage::handle_request(SQLStageEvent *sql_event)
@@ -355,7 +355,7 @@ RC LogicalPlanGenerator::create_plan(
 
 <img src="images/select_statement_phy_operators.png" width = "100%" alt="" align=center />
 
-#### 六.算子执行
+## 六.算子执行
 
 经过以上的阶段，我们已经生成了sql语句相应的算子树，接下来就是对算子进行open(),next(),close()等操作。
 
@@ -442,4 +442,4 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
 ```
 
 
-<img src="images/select_statement_execute.png" width = "80%" alt="" align=center />
+<img src="images/select_statement_execute.png" width = "100%" alt="" align=center />

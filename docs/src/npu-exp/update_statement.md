@@ -2,13 +2,13 @@
 
 本文将会详细介绍miniob中update语句的执行流程，接下来将以`update t1 set c1 =1`为例进行讲解。
 
-`create table t1 (c1 int);`
+```sql
+create table t1 (c1 int);
+insert into t1 values(2);
+update t1 set c1 = 1;
+```
 
-`insert into t1 values(2);`
-
-`update t1 set c1 =1;`
-
-#### 一.SQL语句执行流程
+## 一. SQL语句执行流程
 
 ​	MiniOB的SQL语句执行流程如下图所示：
 
@@ -26,7 +26,7 @@
 
 现在不明白这些过程没有关系，接下来会具体分析每一个过程。
 
-#### 二.一条sql语句的一生
+## 二. 一条sql语句的一生
 
 在阅读接下来的内容之前，建议大家先阅读一下链接的内容。
 
@@ -63,17 +63,16 @@ RC SessionStage::handle_sql(SQLStageEvent *sql_event)
 
 接下来会分别讲解以上四个函数。
 
-#### 三.词法解析与语法解析阶段(Parser)阶段（parse_stage_.handle_request()）
+## 三. 词法解析与语法解析阶段(Parser)阶段（parse_stage_.handle_request()）
 
 ​	词法分析与语法分析是编译原理中的相关知识，在miniob中，词法文件是lex_sql.l，语法文件是yacc_sql.y,下面是miniob官方给出的介绍词法语法分析的链接，建议先阅读后再继续学习本文档。
 
-- ​	https://oceanbase.github.io/miniob/design/miniob-sql-parser.html
+- ​https://oceanbase.github.io/miniob/design/miniob-sql-parser.html
 
-
-   在词法分析阶段，将输入的sql语句分解为一个个token。在语法分析阶段，根据语法文件，对词法分析生成的token进行规约，生成相应的`sqlnode`。下图中将`UPDATE`识别为token。
+在词法分析阶段，将输入的sql语句分解为一个个token。在语法分析阶段，根据语法文件，对词法分析生成的token进行规约，生成相应的`sqlnode`。下图中将`UPDATE`识别为token。
    
  
-   <img src="images/update_statement_parser.png" width = "1000%" alt="" align=center />
+   <img src="images/update_statement_parser.png" width = "100%" alt="" align=center />
    
    针对`update t1 set c1 =1`这条sql，对应的是如下的语法规则(文件yacc_sql.y中)：
 
@@ -112,7 +111,7 @@ struct UpdateSqlNode
 
 ​	到此，词法语法解析的过程就结束了。
 
-#### 四.resolve_stage_.handle_request（）函数
+## 四. resolve_stage_.handle_request() 函数
 
 ```c++
 RC ResolveStage::handle_request(SQLStageEvent *sql_event)
@@ -207,7 +206,7 @@ RC UpdateStmt::create(Db *db, const UpdateSqlNode &update, Stmt *&stmt)
 
 到目前为止，我们已经将词法语法解析生成的`sqlNode`，转换为了`UpdateStmt`。
 
-#### 五.optimize_stage_.handle_request()函数
+## 五. optimize_stage_.handle_request() 函数
 
 ```c++
 RC OptimizeStage::handle_request(SQLStageEvent *sql_event)
@@ -219,7 +218,7 @@ RC OptimizeStage::handle_request(SQLStageEvent *sql_event)
 }
 ```
 
-该函数中，最重要的就是以上两行代码，什么是算子呢？**SQL 语句的具体执行过程，可以根据 SQL语句的不同分成不同的执行步骤，每个步骤中通常都会包含一个或多个SQL[算子](https://so.csdn.net/so/search?q=算子&spm=1001.2101.3001.7020)。**算子之间以树状形式进行组织。miniob中sql的引擎，采用火山模型。
+该函数中，最重要的就是以上两行代码，什么是算子呢？**SQL 语句的具体执行过程，可以根据 SQL语句的不同分成不同的执行步骤，每个步骤中通常都会包含一个或多个SQL算子**。算子之间以树状形式进行组织。miniob中sql的引擎，采用火山模型。
 
 在火山模型中，所有的代数运算符(operator)都被看成是一个迭代器，它们都提供一组简单的接口：open()—next()—close()，查询计划树由一个个这样的关系运算符组成，每一次的next()调用，运算符就返回一行(Row)，每一个运算符的next()都有自己的流控逻辑，数据通过运算符自上而下的next()嵌套调用而被动的进行拉取。
 
@@ -258,7 +257,8 @@ RC LogicalPlanGenerator::create_plan(
 
 
 <img src="images/update_statement_phy_operator.png" width = "100%" alt="" align=center />
-#### 六.算子执行
+
+## 六. 算子执行
 
 经过以上的阶段，我们已经生成了sql语句相应的算子树，接下来就是对算子进行open(),next(),close()等操作。
 
@@ -346,10 +346,7 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
 
 
 
-<img src="images/update_statement_open_operator.png" width = "80%" alt="" align=center />
+<img src="images/update_statement_open_operator.png" width = "100%" alt="" align=center />
 
 
-<img src="images/image-20230930120008625.png" width = "80%" alt="" align=center />
-
-
-<img src="images/update_statement_open_operator2.png" width = "80%" alt="" align=center />
+<img src="images/update_statement_open_operator2.png" width = "100%" alt="" align=center />
