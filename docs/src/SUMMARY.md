@@ -2,8 +2,11 @@
 
 - [MiniOB 简介](./miniob-introduction.md)
 - [NPU 实验教程](./npu-exp/introduction.md)
-  - [vscode-wsl环境搭建](./npu-exp/vscode-wsl_environment_configuration.md)
-  - [git教程](./npu-exp/dev_by_git.md)
+  - [WSL + VSCode 环境搭建](./npu-exp/vscode-wsl_environment_configuration.md)
+  - [Git 教程](./npu-exp/dev_by_git.md)
+  - [MiniOB Debug 教程](./npu-exp/debug_for_miniob.md)
+  - [Select 语句简要解析](./npu-exp/select_statement.md)
+  - [Update 语句简要解析](./npu-exp/update_statement.md)
 - [如何编译](./how_to_build.md)
 - [如何运行](./how_to_run.md)
 - [开发环境搭建](./dev-env/introduction.md)
