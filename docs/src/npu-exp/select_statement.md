@@ -202,87 +202,53 @@ RC Stmt::create_stmt(Db *db, ParsedSqlNode &sql_node, Stmt *&stmt)
 `sql_node.flag` 表示本语句的类型，针对 select 语句，会调用 `SelectStmt::create(db, sql_node.selection, stmt)`，根据语法树 sql node，生成 stmt
 
 在语法解析阶段，我们只能检查sql语句是否有语法错误，而在语义解析阶段中，**我们要检查 select 语句中出现的表名，列名等是否存在**
-
+​对于 `SelectStmt::create` 函数：
+- 要检查语句中出现的表名和列名是否存在
+- 对于 `select * from t1` 中的 `*`，应该将其转换为对应的列
+- 如果语句包含 `where` 子句，还应该生成 `FilterStmt`
 ```c++
 RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
 {
   // collect tables in `from` statement
-  std::vector<Table *> tables;//存储from后跟的表,本sql中就表示表t1
+  std::vector<Table *> tables;//存储 from 后跟的表,本sql中就表示表 t1
   std::unordered_map<std::string, Table *> table_map;
   for (size_t i = 0; i < select_sql.relations.size(); i++) {
     const char *table_name = select_sql.relations[i].c_str();
-    Table *table = db->find_table(table_name);//根据表的名字，获取相关的Table
-    if (nullptr == table) {
-      LOG_WARN("no such table. db=%s, table_name=%s", db->name(), table_name);
-      return RC::SCHEMA_TABLE_NOT_EXIST;
-    }
-
+    Table *table = db->find_table(table_name);//根据表的名字，获取相关的 Table ,如果返回值为空，则表示当前表不存在，程序应该报错
+    ...
     tables.push_back(table);
-    table_map.insert(std::pair<std::string, Table *>(table_name, table));//存储表名到Table的映射
+    table_map.insert(std::pair<std::string, Table *>(table_name, table));//存储表名到 Table 的映射
   }
 
   // collect query fields in `select` statement
-  std::vector<Field> query_fields;//存储select后跟的列,本sql中就表示c1列
+  std::vector<Field> query_fields;//存储 select 后跟的列,本 sql 中就表示 c1 列
   for (int i = static_cast<int>(select_sql.attributes.size()) - 1; i >= 0; i--) {
     const RelAttrSqlNode &relation_attr = select_sql.attributes[i];
-
+    //处理 select * from t1 这种语句，相应把 * 转换为列名
     if (common::is_blank(relation_attr.relation_name.c_str()) &&
-        0 == strcmp(relation_attr.attribute_name.c_str(), "*")) {//像select * from t1;这种sql，就需要把 * 转换为列名
+        0 == strcmp(relation_attr.attribute_name.c_str(), "*")) {
       for (Table *table : tables) {
-        wildcard_fields(table, query_fields);
+        wildcard_fields(table, query_fields);//把 * 转换为列名
       }
-
+    //处理 select t1.*,t2.* from t1,t2 这种语句，存在表名，但是列名为 *
     } else if (!common::is_blank(relation_attr.relation_name.c_str())) {
       const char *table_name = relation_attr.relation_name.c_str();
       const char *field_name = relation_attr.attribute_name.c_str();
-		...
-   
+		  ...
+      if (0 == strcmp(table_name, "*")){
         for (Table *table : tables) {
-          wildcard_fields(table, query_fields);
+          wildcard_fields(table, query_fields);//把 * 转换为列名
         }
-      } else {
-        auto iter = table_map.find(table_name);
-        if (iter == table_map.end()) {
-          LOG_WARN("no such table in from list: %s", table_name);
-          return RC::SCHEMA_FIELD_MISSING;
-        }
-
-        Table *table = iter->second;
-        if (0 == strcmp(field_name, "*")) {
-          wildcard_fields(table, query_fields);
-        } else {
-          const FieldMeta *field_meta = table->table_meta().field(field_name);
-          if (nullptr == field_meta) {
-            LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), field_name);
-            return RC::SCHEMA_FIELD_MISSING;
-          }
-
-          query_fields.push_back(Field(table, field_meta));
-        }
-      }
+      } 
+      ...
     } else {
-      if (tables.size() != 1) {
-        LOG_WARN("invalid. I do not know the attr's table. attr=%s", relation_attr.attribute_name.c_str());
-        return RC::SCHEMA_FIELD_MISSING;
-      }
-
+      ...
       Table *table = tables[0];
-      const FieldMeta *field_meta = table->table_meta().field(relation_attr.attribute_name.c_str());
-      if (nullptr == field_meta) {
-        LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), relation_attr.attribute_name.c_str());
-        return RC::SCHEMA_FIELD_MISSING;
-      }
-
+      const FieldMeta *field_meta = table->table_meta().field(relation_attr.attribute_name.c_str());//field_meta 如果为空，表示当前表中不存在该列，程序应该报错
       query_fields.push_back(Field(table, field_meta));
     }
   }
-
-
-  Table *default_table = nullptr;
-  if (tables.size() == 1) {
-    default_table = tables[0];
-  }
-
+  ...
   // create filter statement in `where` statement
   FilterStmt *filter_stmt = nullptr;//针对where后的过滤条件
   RC rc = FilterStmt::create(db,
@@ -291,12 +257,9 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
       select_sql.conditions.data(),
       static_cast<int>(select_sql.conditions.size()),
       filter_stmt);
-  if (rc != RC::SUCCESS) {
-    LOG_WARN("cannot construct filter stmt");
-    return rc;
-  }
-
+  ...
   SelectStmt *select_stmt = new SelectStmt();
+  //为生成的 SelectStmt 赋值
   select_stmt->tables_.swap(tables);
   select_stmt->query_fields_.swap(query_fields);
   select_stmt->filter_stmt_ = filter_stmt;
@@ -333,6 +296,11 @@ RC OptimizeStage::handle_request(SQLStageEvent *sql_event)
 - filter 算子负责过滤掉一些不符合条件的数据行
 - project 算子负责投影操作，也会涉及到表达式计算
  
+​对于 `LogicalPlanGenerator::create_plan` 函数：
+- 要为语句中涉及的每张表生成一个 `LogicalOperator` 算子
+- 如果涉及到表连接操作，还应该生成 `JoinLogicalOperator` 算子
+- 如果语句包含 `where` 子句，还应该生成 `predicate_oper` 算子
+- 需要注意 `add_child` ，函数，算子之间正是通过该函数构建成算子树
 ```c++
 RC LogicalPlanGenerator::create_plan(
     SelectStmt *select_stmt, unique_ptr<LogicalOperator> &logical_operator)
@@ -349,24 +317,20 @@ RC LogicalPlanGenerator::create_plan(
       }
     }
 
-    unique_ptr<LogicalOperator> table_get_oper(new TableGetLogicalOperator(table, fields, true/*readonly*/));//针对每一张表，都要生成一个TableGetLogicalOperator算子
+    unique_ptr<LogicalOperator> table_get_oper(new TableGetLogicalOperator(table, fields, true/*readonly*/));//针对每一张表，都要生成一个 TableGetLogicalOperator 算子
     if (table_oper == nullptr) {
       table_oper = std::move(table_get_oper);
     } else {
-      JoinLogicalOperator *join_oper = new JoinLogicalOperator;
-      join_oper->add_child(std::move(table_oper));
+      JoinLogicalOperator *join_oper = new JoinLogicalOperator;//如果 From 后跟多张表，就需要生成 Join 算子
+      join_oper->add_child(std::move(table_oper));// Join 应该有两个子算子
       join_oper->add_child(std::move(table_get_oper));
       table_oper = unique_ptr<LogicalOperator>(join_oper);
     }
   }
 
-  unique_ptr<LogicalOperator> predicate_oper;//filter算子，进行数据行的过滤
-  RC rc = create_plan(select_stmt->filter_stmt(), predicate_oper);
-  if (rc != RC::SUCCESS) {
-    LOG_WARN("failed to create predicate logical plan. rc=%s", strrc(rc));
-    return rc;
-  }
-
+  unique_ptr<LogicalOperator> predicate_oper;//filter 算子，进行数据行的过滤
+  RC rc = create_plan(select_stmt->filter_stmt(), predicate_oper);//生成 predicate_oper 算子
+  ...
   unique_ptr<LogicalOperator> project_oper(new ProjectLogicalOperator(all_fields));
   if (predicate_oper) {
     if (table_oper) {
@@ -384,7 +348,6 @@ RC LogicalPlanGenerator::create_plan(
 }
 ```
 
-算子之间通过 `add_child` 函数组织成树的形式
 
 而 `generate_physical_plan` 函数，就是将逻辑算子转换为物理算子
 
@@ -436,35 +399,19 @@ RC PlainCommunicator::write_result(SessionEvent *event, bool &need_disconnect)
   return rc;
 }
 ```
-
+`write_result_internal` 就会循环调用顶层算子的 `open` 函数一行一行的处理数据。
 ```c++
 RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disconnect)
 {
-  RC rc = RC::SUCCESS;
-  need_disconnect = true;
-
   SqlResult *sql_result = event->sql_result();
   rc = sql_result->open();//打开顶层算子
-  if (OB_FAIL(rc)) {
-    sql_result->close();
-    sql_result->set_return_code(rc);
-    return write_state(event, need_disconnect);
-  }
 
-  rc = RC::SUCCESS;
   Tuple *tuple = nullptr;
   while (RC::SUCCESS == (rc = sql_result->next_tuple(tuple))) {//调用顶层算子的next()函数
-    assert(tuple != nullptr);
-
-    ...
+      ...
       Value value;
       rc = tuple->cell_at(i, value);//tuple就是一行数据
-      if (rc != RC::SUCCESS) {
-        sql_result->close();
-        return rc;
-      }
-
-     ....
+      ....
   if (rc == RC::RECORD_EOF) {//数据读取完毕
     rc = RC::SUCCESS;
   }
@@ -473,10 +420,10 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
   if (OB_SUCC(rc)) {
     rc = rc_close;
   }
-
   return rc;
+  }
 }
 ```
 
-
+下面的流程图中介绍了 Select 语句对应的算子操作。
 <img src="images/select_statement_execute.png" width = "100%" alt="" align=center />
