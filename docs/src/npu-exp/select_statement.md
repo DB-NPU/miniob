@@ -202,10 +202,12 @@ RC Stmt::create_stmt(Db *db, ParsedSqlNode &sql_node, Stmt *&stmt)
 `sql_node.flag` 表示本语句的类型，针对 select 语句，会调用 `SelectStmt::create(db, sql_node.selection, stmt)`，根据语法树 sql node，生成 stmt
 
 在语法解析阶段，我们只能检查sql语句是否有语法错误，而在语义解析阶段中，**我们要检查 select 语句中出现的表名，列名等是否存在**
+
 ​对于 `SelectStmt::create` 函数：
 - 要检查语句中出现的表名和列名是否存在
 - 对于 `select * from t1` 中的 `*`，应该将其转换为对应的列
 - 如果语句包含 `where` 子句，还应该生成 `FilterStmt`
+
 ```c++
 RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
 {
