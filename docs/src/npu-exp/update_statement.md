@@ -1,6 +1,6 @@
-# Update语句执行流程解析
+# UPDATE 语句执行流程解析
 
-本文将会详细介绍miniob中update语句的执行流程，接下来将以`update t1 set c1 =1`为例进行讲解。
+本文将会详细介绍 MiniOB 中 UPDATE 语句的执行流程，接下来将以 `update t1 set c1 =1` 为例进行讲解。
 
 ```sql
 create table t1 (c1 int);
@@ -8,8 +8,9 @@ insert into t1 values(2);
 update t1 set c1 = 1;
 ```
 
-## 一. SQL语句执行流程
-  在[SELECT 语句执行流程解析](./select_statement.md)中我们已经介绍了 MiniOB 中一条 SQL 语句的执行流程，接下来我们将从 update 语句的词法语法解析开始讲起。
+## 一. SQL 语句执行流程
+在 [SELECT 语句执行流程解析](./select_statement.md)中我们已经介绍了 MiniOB 中一条 SQL 语句的执行流程，接下来我们将从 update 语句的词法语法解析开始讲起。
+
 ## 二. 词法语法解析阶段阶段
 函数：`parse_stage_.handle_request()`
 
@@ -22,26 +23,27 @@ update t1 set c1 = 1;
 
 - 在语法分析阶段，会根据语法文件，对词法分析生成的 token 进行归约，生成相应的 SqlNode
 
-   针对`update t1 set c1 =1`这条sql，对应的是如下的语法规则(文件yacc_sql.y中)：
+  针对 `update t1 set c1 =1` 这条 sql，对应的是如下的语法规则(文件 yacc_sql.y 中)：
 
-```.
-update_stmt:      /*  update 语句的语法解析树*/
-    UPDATE ID SET ID EQ value where 
-    {
-      $$ = new ParsedSqlNode(SCF_UPDATE);
-      $$->update.relation_name = $2;
-      $$->update.attribute_name = $4;
-      $$->update.value = *$6;
-      if ($7 != nullptr) {
-        $$->update.conditions.swap(*$7);
-        delete $7;
+  ```yacc
+  update_stmt:      /*  update 语句的语法解析树*/
+      UPDATE ID SET ID EQ value where 
+      {
+        $$ = new ParsedSqlNode(SCF_UPDATE);
+        $$->update.relation_name = $2;
+        $$->update.attribute_name = $4;
+        $$->update.value = *$6;
+        if ($7 != nullptr) {
+          $$->update.conditions.swap(*$7);
+          delete $7;
+        }
+        free($2);
+        free($4);
       }
-      free($2);
-      free($4);
-    }
-    ;
-```
-​	对于 `update t1 set c1 =1` 这条sql，以上语法规则中:
+      ;
+  ```
+
+对于 `update t1 set c1 =1` 这条sql，以上语法规则中:
 - `UPDATE` 对应于update
 - `ID` 对应于 `t1`
 - `SET` 对应于 `set`
@@ -49,7 +51,7 @@ update_stmt:      /*  update 语句的语法解析树*/
 - `EQ` 对应于 `=`
 - `value` 对应于 `1`
 
-​	经过词法、语法解析后， update 内容会存储到一个 `UpdateSqlNode` 对象中。
+​	经过词法、语法解析后， update 内容会存储到一个 `UpdateSqlNode` 对象中
 
 我们来看一下这个结构体的成员变量
 
@@ -63,34 +65,31 @@ struct UpdateSqlNode
 };
 ```
 
-​	对于 `update t1 set c1 =1` 这条sql:
-- attribute_name 中存储了列 `c1`
+​对于 `update t1 set c1 = 1` 这条 sql:
 - relation_name 表名 `t1`
-- 而 conditions 中存储的是 where 后的过滤条件，本 sql 中没有 where 子句，所以     conditions 中内容为空。
+- attribute_name 中存储了列 `c1`
+- value ?
+- 而 conditions 中存储的是 where 后的过滤条件，本 sql 中没有 where 子句，所以 conditions 中内容为空。
 
-​	到此，词法语法解析的过程就结束了。
+​到此，词法语法解析的过程就结束了
 
-## 三.  resolve 语义解析阶段
+## 三. resolve 语义解析阶段
 函数：`resolve_stage_.handle_request()`
 
 ```c++
 RC ResolveStage::handle_request(SQLStageEvent *sql_event)
 {
-	....
-
+  ...
   ParsedSqlNode *sql_node = sql_event->sql_node().get();
   Stmt *stmt = nullptr;
   rc = Stmt::create_stmt(db, *sql_node, stmt);
-	...
-
+  ...
   sql_event->set_stmt(stmt);
-
   return rc;
 }
-
 ```
 
-该函数中，最重要的是 `Stmt::create_stmt(db, *sql_node, stmt)` 该函数根据词法语法解析生成的SqlNode，生成对应的 Stmt。
+该函数中，最重要的是 `Stmt::create_stmt(db, *sql_node, stmt)` 该函数根据词法语法解析生成的 SqlNode，生成对应的 Stmt
 
 ```c++
 RC Stmt::create_stmt(Db *db, ParsedSqlNode &sql_node, Stmt *&stmt)
@@ -117,9 +116,9 @@ RC Stmt::create_stmt(Db *db, ParsedSqlNode &sql_node, Stmt *&stmt)
 
 ```
 
-`sql_node.flag` 表示本语句的类型，针对 Update 语句，会调用 `UpdateStmt::create(db, sql_node.selection, stmt)`，根据 SqlNode ，生成 Stmt 。
+`sql_node.flag` 表示本语句的类型，针对 Update 语句，会调用 `UpdateStmt::create(db, sql_node.selection, stmt)`，根据 SqlNode ，生成 Stmt
 
-在词法语法解析阶段，我们只能检查 sql 语句是否有语法错误,而在语义解析阶段,**我们要检测 update 语句中出现的列名，表名等是否存在,以及新的值是否合法**。
+在词法语法解析阶段，我们只能检查 sql 语句是否有语法错误，而在语义解析阶段，**我们要检测 update 语句中出现的列名，表名等是否存在,以及新的值是否合法**。
 
 ​对于 `UpdateStmt::create` 函数：
 - 要检查语句中出现的表名和列名是否存在
@@ -179,10 +178,11 @@ RC OptimizeStage::handle_request(SQLStageEvent *sql_event)
 }
 ```
 
-该函数中，最重要的就是以上两行代码。在[SELECT 语句执行流程解析](./select_statement.md)中我们已经介绍了算子相关的知识，下面给出的是 Update 语句的算子树。
+该函数中，最重要的就是以上两行代码。在[SELECT 语句执行流程解析](./select_statement.md)中我们已经介绍了算子相关的知识，下面给出的是 Update 语句的算子树
 
-
-<img src="images/update_statement_operators_tree.png" width = "50%" alt="" align=center />
+<p align=center>
+  <img src="images/update_statement_operators_tree.png" width = "50%" alt="" align=center />
+</p>
 
 简单 Update 语句的语法树如上图所示:
 - tableGet 算子负责将数据从磁盘中读出来
