@@ -1,6 +1,8 @@
 # 调试 MiniOB
 
-[官方调试文档](https://oceanbase.github.io/miniob/dev-env/how_to_dev_miniob_by_vscode.html)
+[开发环境搭建(本地调试, 适用 Linux 和 Mac) - MiniOB](https://db-npu.github.io/miniob/dev-env/how_to_dev_miniob_by_vscode.html)
+
+[MiniOB 调试 - MiniOB](https://db-npu.github.io/miniob/dev-env/miniob-how-to-debug.html)
 
 ## 在 WSL 中安装 C++ 插件
 
@@ -8,8 +10,7 @@
 
 ## 创建 launch.json 文件
 1. 用 VSCode 打开 MiniOB 工作目录
-2. 在工程目录的 .vscode 目录下新建 tasks.json，鼠标右键.VSCode 目录，选择新建文件,命名为 tasks.json
-
+2. 在工程目录的 .vscode 目录下新建 tasks.json，鼠标右键 .VSCode 目录，选择新建文件，命名为 tasks.json
 
 <img src="images/debug_for_miniob_2.png" width = "80%" alt="" align=center />
 
