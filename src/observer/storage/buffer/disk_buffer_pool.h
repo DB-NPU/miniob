@@ -30,6 +30,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/lang/mutex.h"
 #include "common/mm/mem_pool.h"
 #include "common/lang/lru_cache.h"
+#include "common/lang/lruk_cache.h"
 #include "common/lang/bitmap.h"
 #include "storage/buffer/page.h"
 #include "storage/buffer/frame.h"
@@ -158,6 +159,10 @@ private:
   std::mutex lock_;
   FrameLruCache  frames_;
   FrameAllocator allocator_;
+
+  // npu-exp: you can try this
+  // using FrameLruKCache = common::LruKCache<2, FrameId, Frame *, BPFrameIdHasher>;
+  // FrameKLruCache  frames_;
 };
 
 /**
