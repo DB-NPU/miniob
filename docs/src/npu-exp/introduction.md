@@ -4,3 +4,5 @@ NPU 实验教程
 - [MiniOB Debug 教程](./debug_for_miniob.md)
 - [SELECT 语句执行流程解析](./select_statement.md)
 - [UPDATE 语句执行流程解析](./update_statement.md)
+- [索引实现：Multi-Index Show-Index](./multi_index.md)
+- [缓冲池替换策略：LRU-K](./lruk_exp.md)

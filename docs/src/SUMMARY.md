@@ -7,6 +7,8 @@
   - [MiniOB Debug 教程](./npu-exp/debug_for_miniob.md)
   - [SELECT 语句执行流程解析](./npu-exp/select_statement.md)
   - [UPDATE 语句执行流程解析](./npu-exp/update_statement.md)
+  - [索引实现：Multi-Index Show-Index](./npu-exp/multi_index.md)
+  - [缓冲池替换策略：LRU-K](./npu-exp/lruk_exp.md)
 - [如何编译](./how_to_build.md)
 - [如何运行](./how_to_run.md)
 - [开发环境搭建](./dev-env/introduction.md)
